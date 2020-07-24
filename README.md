@@ -1,5 +1,5 @@
 # Tcf21Interstitial
-Three types of scRNA-seq experiments for Leydig regeneration from Tcf21+ Interstitial: 
+We performed scRNA-seq analysis of three experiments for Leydig regeneration from Tcf21+ Interstitial: 
 1. Chemical ablation of Leydig
 2. Genetic ablation of Leydig
 3. In-vitro leydig differentiation from Tcf21+ Interstitial
