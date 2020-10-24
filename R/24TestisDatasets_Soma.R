@@ -1,4 +1,4 @@
-### R script for visualization of interstitial cell types in merged 24 ST batches in Jan 2020 by Qianyi
+### R script for visualization of somatic cell types in merged 24 ST batches in Jan 2020 by Qianyi
 ### Related to Figure 1A
 
 # Used interstitial cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
