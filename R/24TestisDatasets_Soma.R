@@ -23,16 +23,17 @@ dgefile=dgename=""
 sets=c("Macrophage","Endothelial","Myoid","Unknown","Leydig","Sertoli")
 setsname=setslabel=c("ST24NoINT6_NoInnateLymph")
 
-load(paste0("data_DGE/MouseAdultST25",setsname,".Robj"))
-dge #  22565 genes across 3622 samples
-
-
 ### 4 colors from ggplot
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 myBrewerPalette=gg_color_hue(4)
+
+
+### load all soma of 25 ST datasets 
+load(file ="data_DGE/MouseAdultST25Somatic.Robj")
+dgeall=dge
 
 
 ######### PCA for soma of 24 ST datasets (removing INT6 from ST25)
@@ -56,7 +57,7 @@ dim(dgedata)
 ### Filter for genes (Non-0 genes)
 nCellperGene <- rowSums(dgedata>0)
 dgedata2=dgedata[which(nCellperGene >= 1),]
-dim(dgedata2)   # [1] 20568  1459
+dim(dgedata2)   
 ### Setup Seurat object
 dge <- CreateSeuratObject(raw.data = dgedata2, project=setsname, min.cells=1, min.genes=1)
 mito.genes <- grep(pattern = "^MT-|^mt-", x = rownames(x = dge@data), value = TRUE)
@@ -169,4 +170,4 @@ table(markersall$cluster)
 #Macrophage Endothelial       Myoid     Unknown      Leydig     Sertoli 
 #        224         284         169         274         242         370 
 write.table(markersall,paste0("data_DGE/MouseAdultST25_MarkersAll_",setsname,"_pct0.2_diffpct0.2_thresh2fold_1.27.2020.txt"),col.names=T,row.names=T,quote=F,sep="\t")
-
+# saved as Table S1A
