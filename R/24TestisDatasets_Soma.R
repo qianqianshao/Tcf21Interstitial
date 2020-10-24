@@ -1,10 +1,10 @@
-### R script for visualization of somatic cell types in merged 24 ST batches in Jan 2020 by Qianyi
-### Related to Figure 1A
+### R script for visualization of somatic cell types in 24 testis datasets using cell type classification of merged 25 testis datasets by Qianyi
+### Related to Figure 1A and 1B
 
-# Used interstitial cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
+# Used somatic cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
 # https://github.com/qianqianshao/Drop-seq_ST/blob/master/R/FocusedClustering_SomaticCells/Somatic_7SomaticCellTypes.R
 # Remove INT6 dataset from merged 25 testis datasets -> 24 testis datasets 
-# remove InnateLymphoid which are very few
+# remove InnateLymphoid which are very few in the 24 testis datasets
 
 home="/scratch/junzli_root/junzli/qzm/Dropseq_analysis/"
 setwd(home)
