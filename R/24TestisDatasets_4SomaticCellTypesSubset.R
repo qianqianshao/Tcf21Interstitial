@@ -3,8 +3,8 @@
 
 # Used somatic cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
 # https://github.com/qianqianshao/Drop-seq_ST/blob/master/R/FocusedClustering_SomaticCells/Somatic_7SomaticCellTypes.R
-# Remove INT6 dataset from merged 25 testis datasets -> 24 testis datasets 
-# remove InnateLymphoid which are very few in the 24 testis datasets
+# Removed INT6 dataset from merged 25 testis datasets to avoid batch effect of Tcf21+ dataset -> 24 testis datasets 
+# removed InnateLymphoid which are very few in the 24 testis datasets
 
 
 home="/scratch/junzli_root/junzli/qzm/Dropseq_analysis/"
