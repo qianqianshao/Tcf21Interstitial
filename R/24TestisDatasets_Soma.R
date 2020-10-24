@@ -17,7 +17,7 @@ redblue100<-rgb(read.table('data_DGE/redblue100.txt',sep='\t',row.names=1,header
 source(paste0(home,"data_DGE/Rcode_multiplot.R"))
 
 
-dgefile=dgename="figJan2020_MouseAdultST25NoINT6_Endo-Myo-Unk-Ley/"
+dgefile=dgename=""
 
 ### 6 somatic cell types for 24 ST datasets - assigned from 25 ST datasets
 sets=c("Macrophage","Endothelial","Myoid","Unknown","Leydig","Sertoli")
