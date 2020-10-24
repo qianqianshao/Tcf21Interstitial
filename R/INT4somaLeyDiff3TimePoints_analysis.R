@@ -1,4 +1,5 @@
 # scRNA-seq analysis of in-vitro Leydig differentiation at 3 different time points by Qianyi in Nov 2019 
+# Related to Figure 3A-C and Table S2
 # merge the INT4 soma with 3 time points of in-vitro leydig differentiation data and do clustering
 
 
