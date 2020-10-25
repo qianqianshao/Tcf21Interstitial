@@ -1,5 +1,5 @@
 ### R script for zoomed-in view of 4 intertitial cell types in 24 testis datasets by Qianyi
-### Related to Figure 1A and 1B
+### Related to Figure 1C-D and Table S1B
 
 # Used somatic cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
 # https://github.com/qianqianshao/Drop-seq_ST/blob/master/R/FocusedClustering_SomaticCells/Somatic_7SomaticCellTypes.R
