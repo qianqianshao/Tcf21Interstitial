@@ -250,3 +250,95 @@ dgeall=SetAllIdent(dgeall,ordered)
 ### save dgeall with ordered and merged clusters
 save(dgeall,file=paste0(exp[i],".Robj"))
 
+# OldSca1+LM
+res="res.0.7merge"
+dge=SetAllIdent(dge,id=res[i])
+## More markers by relaxing the thresholds
+markers=FindAllMarkers(dgeall,only.pos=TRUE,test.use="bimod",logfc.threshold = log(2),min.diff.pct=0.1,do.print = TRUE)
+print(table(markers$cluster))
+  1   2   3   4   5   6   7 
+358 197  73  12  10  24 163
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0.1_logfc2fold_11.2019.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dgeall,only.pos=TRUE,test.use="bimod",logfc.threshold = log(2),min.diff.pct=0.05,do.print = TRUE)
+print(table(markers$cluster))
+  1   2   3   4   5   6   7 
+374 203  73  12  11  24 164 
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0.05_logfc2fold_11.2019.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dgeall,only.pos=TRUE,test.use="bimod",logfc.threshold = log(2),min.diff.pct=0,do.print = TRUE)
+print(table(markers$cluster))
+  1   2   3   4   5   6   7 
+380 204  73  12  11  25 166
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0_logfc2fold_11.2019.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dgeall,only.pos=TRUE,test.use="bimod",logfc.threshold = log(1.8),min.diff.pct=0.2,do.print = TRUE)
+print(table(markers$cluster))
+  1   2   3   4   5   6   7 
+231 125 107  19  18  28 201 
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0.2_logfc1.8fold_11.2019.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dgeall,only.pos=TRUE,test.use="bimod",logfc.threshold = log(1.8),min.diff.pct=0,do.print = TRUE)
+print(table(markers$cluster))
+  1   2   3   4   5   6   7 
+585 279 107  21  24  58 217 
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0_logfc1.8fold_11.2019.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dge,only.pos=TRUE,test.use="bimod",logfc.threshold = log(1.5),min.diff.pct=0.1,do.print = TRUE)
+  print(table(markers$cluster))
+ClusterID  1   2   3   4   5   6   7
+nMarker  669 277 178  64  70 136 388
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0.1_logfc1.5fold_3.2020.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+markers=FindAllMarkers(dge,only.pos=TRUE,test.use="bimod",logfc.threshold = log(1.5),min.diff.pct=0.2,do.print = TRUE)
+  print(table(markers$cluster)) # used this
+ClusterID  1   2   3   4   5   6   7
+nMarker  233 125 164  58  28  37 353
+write.table(markers,paste0(dgefile,exp[i],"_",res[i],"_mindiff0.2_logfc1.5fold_3.2020.txt"),col.names=T,row.names=T,quote=F,sep="\t")
+# decided to use this, 1.5-fold, 20% difference in detection rate
+# saved as Table S2
+                            
+                        
+pdf(paste0("exp_mergedall_clusters_order1.pdf"),height=2.7*2,width=2.7*2)
+plotlist=list()
+plotlist[[1]]=PCAPlot(dgeall,pt.size=1,no.legend=TRUE,cols.use=myBrewerPalette,do.return=TRUE,do.label=TRUE)
+plotlist[[2]]=PCAPlot(dgeall,1,3,pt.size=1,no.legend=TRUE,cols.use=myBrewerPalette,do.return=TRUE,do.label=TRUE)
+plotlist[[3]]=TSNEPlot(dgeall,pt.size=1,no.legend=TRUE,colors.use=myBrewerPalette,do.return=TRUE,do.label=TRUE,label.size=4)
+plotlist[[4]]=DimPlot(dgeall,pt.size=1,reduction.use="umap",no.legend=TRUE,cols.use=myBrewerPalette,do.return=TRUE,do.label=TRUE)
+multiplot(plotlist,cols = 2)
+dev.off()
+# saved as Figure 3A
+                            
+######## Heatmap for all markers
+dge=dgeall
+centroid=log(AverageExpression(dge)+1)
+
+### Genes Standardized Across Cell Types
+centroid.std=(centroid-apply(centroid,1,mean))/apply(centroid,1,sd)
+
+### Visualize markers in heatmap across all cell types
+genes=markers$gene
+data.use=centroid.std
+
+levels=colnames(centroid.std)
+
+colsep.use=cumsum(table(gsub("_.*","",levels))[levels])
+col.lab=rep("",length(levels))
+col.lab=gsub(".*_","",levels)
+
+ncluster=length(levels)
+sidecol=matrix(0,2,length(levels))
+sidecol[1,]=rep(rep(c("white","white"),each=12),3)[1:sum(ncluster)]
+sidecol[2,]=myBrewerPalette[1:sum(ncluster)]
+clab=cbind(sidecol[2,],sidecol[1,])
+rlab=sidecol
+rownames(rlab)=c("","Cell Type")
+colnames(clab)=c("Cell Type","")
+
+col.use=redblue100
+data.use=centroid.std[markers$gene,]
+row.lab=rownames(data.use)
+jpeg(file=paste0(dgename,exp[i],"_centroid_std_markersall.jpeg"),res=300,height=2600,width=1600)
+par(mar=c(4,4,1,1),mgp=c(2.5, 1, 0))
+heatmap.3(data.use,dendrogram="none",Rowv=NA,Colv=NA,trace = "none",col=col.use,colsep = colsep.use,sepcolor="black",sepwidth=c(0.001,0.001),ColSideColors=clab,labCol=col.lab,labRow=row.lab,cexCol=0.8,cexRow=0.3,ColSideColorsSize = 2,RowSideColorsSize = 1.5,symm=F,symkey=F,symbreaks=F, scale="none",margins=c(7,3))
+dev.off()
+# saved as Figure 3B
+                            
+                            
+                            
+                           
+                            
