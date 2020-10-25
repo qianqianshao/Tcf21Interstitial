@@ -306,7 +306,9 @@ dev.off()
 ######## Heatmap for all markers
 dge=dgeall
 centroid=log(AverageExpression(dge)+1)
-
+write.table(centroid,paste0(exp[resi],"_",res[resi],"_Centroid.txt"),quote=F,row.names=T,col.names=T,sep="\t")
+# saved as Figure S2B
+                            
 ### Genes Standardized Across Cell Types
 centroid.std=(centroid-apply(centroid,1,mean))/apply(centroid,1,sd)
 
@@ -336,7 +338,7 @@ jpeg(file=paste0(dgename,exp[i],"_centroid_std_markersall.jpeg"),res=300,height=
 par(mar=c(4,4,1,1),mgp=c(2.5, 1, 0))
 heatmap.3(data.use,dendrogram="none",Rowv=NA,Colv=NA,trace = "none",col=col.use,colsep = colsep.use,sepcolor="black",sepwidth=c(0.001,0.001),ColSideColors=clab,labCol=col.lab,labRow=row.lab,cexCol=0.8,cexRow=0.3,ColSideColorsSize = 2,RowSideColorsSize = 1.5,symm=F,symkey=F,symbreaks=F, scale="none",margins=c(7,3))
 dev.off()
-# saved as Figure 3B
+# saved as Figure S2A
                             
                             
                             
