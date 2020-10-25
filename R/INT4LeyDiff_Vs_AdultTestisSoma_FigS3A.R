@@ -1,11 +1,12 @@
 ###### Comparison between in-vitro leydig differentiation data and Adult Mouse Testis Soma by Qianyi on 3/13/2020
+### Related to Figure S3A
 
 ### Adults Mouse Testis Soma (25 batches) -> 7 Somatic cell types by Qianyi in 2017, published in Green, Ma, et al., DevCell 2018
 # Drop-seq
-data format: log(mean(counts-per-10k)+1), 26694 detected genes, 7 cell type centroids
+# data format: log(mean(counts-per-10k)+1), 26694 detected genes, 7 cell type centroids
 
 ### 7 clusters for OldSca1 (time point 0) + in-vitro leydig regeneration (3 time points)
-data format: log(mean(counts-per-10k)+1), 24698 detected genes, 7 cluster centroids
+# data format: log(mean(counts-per-10k)+1), 24698 detected genes, 7 cluster centroids
 
 ###### load our adult mouse testis somatic data by Qianyi in 2017
 load(file ="data_DGE/MouseAdultST25Somatic.Robj")
