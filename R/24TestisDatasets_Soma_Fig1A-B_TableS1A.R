@@ -1,5 +1,5 @@
 ### R script for visualization of somatic cell types in 24 testis datasets using cell type classification of merged 25 testis datasets by Qianyi
-### Related to Figure 1A and 1B
+### Related to Figure 1A-B and Table S1A
 
 # Used somatic cell type assignments from analysis of merged 25 testis datasets in Green et al, Cell 2018 paper. Please refer to:  
 # https://github.com/qianqianshao/Drop-seq_ST/blob/master/R/FocusedClustering_SomaticCells/Somatic_7SomaticCellTypes.R
