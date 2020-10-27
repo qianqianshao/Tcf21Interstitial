@@ -1,0 +1,144 @@
+```{r}
+library(ComplexHeatmap)
+library(ggplot2)
+library(ggdendro)
+library(seriation)
+```
+
+
+```{r}
+mou.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/MouseAdultST25_7SomaticCellTypes_Centroids_Qianyi.txt",header = TRUE, row.names = 1)
+colnames(mou.cen) <- c("InnateLymphoid","Macrophage","Endothelial", "Myoid", "Leydig","Sertoli","Tcf21+")
+#colnames(mou.cen) <- paste0("Testis_",colnames(mou.cen))
+mou.markers <- read.table("~/storage/Others/Tcf21/MouseSomaMarkers.txt", header = TRUE)
+mou.soma.markers <- intersect(unique(mou.markers$gene), rownames(mou.cen))
+```
+
+```{r}
+#kidney.cen <- readRDS("~/storage/Others/Tcf21/rds/kidney.cen.rds")
+#colnames(kidney.cen) <- paste0("Kidney_", colnames(kidney.cen))
+
+#artery.wirka.cen <- readRDS("~/storage/Others/Tcf21/rds/heart.wirka.cen.rds")
+artery.wirka.healthy.cen <- readRDS("~/storage/Others/Tcf21/rds/heart.wirka.healthy.cen.rds")
+artery.wirka.HFD.cen <- readRDS("~/storage/Others/Tcf21/rds/heart.wirka.injured.cen.rds")
+#colnames(artery.wirka.cen) <- paste0("Artery_", colnames(artery.wirka.cen))
+
+liver.lin.chow.cen <- readRDS("~/storage/Others/Tcf21/rds/lin.chow.cen.rds")
+liver.lin.nash.cen <- readRDS("~/storage/Others/Tcf21/rds/lin.nash.cen.rds")
+#colnames(liver.lin.chow.cen) <- paste0("Liver.lin.chow_", colnames(liver.lin.chow.cen))
+#colnames(liver.lin.nash.cen) <- paste0("Liver.lin.nash_", colnames(liver.lin.nash.cen))
+
+liver.dobie.cen <- readRDS("~/storage/Others/Tcf21/rds/liver.dobie.cen.rds")
+liver.dobie.inj.cen <- readRDS("~/storage/Others/Tcf21/rds/dge.liver.dobie.injured.cen.rds")
+#colnames(liver.dobie.cen) <- paste0("Liver.dobie_", colnames(liver.dobie.cen))
+#colnames(liver.dobie.inj.cen) <- paste0("Liver.dobie.injured_", colnames(liver.dobie.inj.cen))
+
+lung.d0.cen <- readRDS("~/storage/Others/Tcf21/rds/mou.lung.d0.cen.rds")
+lung.d21.cen <- readRDS("~/storage/Others/Tcf21/rds/mou.lung.d21.cen.rds")
+lung.d0.cen <- as.data.frame(lung.d0.cen)
+lung.d0.cen$PDFGrb <- NA
+#colnames(lung.d0.cen) <- paste0("Lung.d0_", colnames(lung.d0.cen))
+#colnames(lung.d21.cen) <- paste0("Lung.d21_", colnames(lung.d21.cen))
+
+heart.tip.cen <- readRDS("~/storage/Others/Tcf21/rds/tip.cen.rds")
+heart.gfp.sham.cen <- readRDS("~/storage/Others/Tcf21/rds/gfp.cen.sham.rds")
+heart.gfp.mi.cen <- readRDS("~/storage/Others/Tcf21/rds/gfp.cen.mi.rds")
+#colnames(heart.tip.cen) <- paste0("Heart.tip_", colnames(heart.tip.cen))
+#colnames(heart.gfp.cen) <- paste0("Heart.gfp_", colnames(heart.gfp.cen))
+```
+
+```{r}
+markers <- intersect(mou.soma.markers, rownames(artery.wirka.HFD.cen))
+markers <- intersect(markers, rownames(liver.lin.nash.cen))
+markers <- intersect(markers, rownames(liver.dobie.inj.cen))
+markers <- intersect(markers, rownames(lung.d0.cen))
+markers <- intersect(markers, rownames(heart.gfp.mi.cen))
+```
+
+
+
+```{r}
+mouse.order <- c("Tcf21+","Myoid","Endothelial","Macrophage","InnateLymphoid","Leydig","Sertoli")
+#kidney.cor <- cor(mou.cen[markers,mouse.order], kidney.cen[markers,], method = "spearman")
+artery.hfd.cor <- cor(mou.cen[markers,mouse.order], artery.wirka.HFD.cen[markers,], method = "spearman")
+artery.hea.cor <- cor(mou.cen[markers,mouse.order], artery.wirka.healthy.cen[markers,], method = "spearman")
+
+liver.lin.chow.cor <- cor(mou.cen[markers, mouse.order], liver.lin.chow.cen[markers,], method = "spearman")
+liver.lin.nash.cor <- cor(mou.cen[markers, mouse.order], liver.lin.nash.cen[markers,], method = "spearman")
+
+liver.dobie.hea.cor <- cor(mou.cen[markers, mouse.order], liver.dobie.cen[markers,], method = "spearman")
+liver.dobie.inj.cor <- cor(mou.cen[markers, mouse.order], liver.dobie.inj.cen[markers,], method = "spearman")
+
+lung.d21.cor <- cor(mou.cen[markers, mouse.order], lung.d21.cen[markers,], method = "spearman")
+lung.d0.cor <- cor(mou.cen[markers, mouse.order], lung.d0.cen[markers,], method = "spearman")
+
+heart.gfp.sham.cor <- cor(mou.cen[markers, mouse.order], heart.gfp.sham.cen[markers,-8], method = "spearman")
+heart.gfp.mi.cor <- cor(mou.cen[markers, mouse.order], heart.gfp.mi.cen[markers,-8], method = "spearman")
+```
+
+```{r}
+Heatmap(t(artery.cor[,order(apply(artery.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(t(liver.lin.cor[,order(apply(liver.lin.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(t(liver.dobie.cor[,order(apply(liver.dobie.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(t(lung.d21.cor[,order(apply(lung.d21.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(t(heart.tip.cor[,order(apply(heart.tip.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(t(kidney.cor[,order(apply(kidney.cor,2,which.max))]), cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+```{r fig.width=10, fig.height=10}
+pdf("~/storage/Others/Tcf21/all.heat.pdf", width = 8, height = 10)
+all.inj.cor <- rbind(t(artery.hfd.cor[,order(apply(artery.hfd.cor,2,which.max))]), 
+                 t(liver.lin.nash.cor[,order(apply(liver.lin.nash.cor,2,which.max))]),
+                 t(liver.dobie.inj.cor[,order(apply(liver.dobie.inj.cor,2,which.max))]),
+                 t(lung.d21.cor[,order(apply(lung.d21.cor,2,which.max))]),
+                 t(heart.gfp.mi.cor[,order(apply(heart.gfp.mi.cor,2,which.max))]))
+
+all.hea.cor <- rbind(t(artery.hea.cor[,order(apply(artery.hfd.cor,2,which.max))]), 
+                 t(liver.lin.chow.cor[,order(apply(liver.lin.nash.cor,2,which.max))]),
+                 t(liver.dobie.hea.cor[,order(apply(liver.dobie.inj.cor,2,which.max))]),
+                 t(lung.d0.cor[,order(apply(lung.d21.cor,2,which.max))]),
+                 t(heart.gfp.sham.cor[,order(apply(heart.gfp.mi.cor,2,which.max))]))
+
+all.cor <- cbind(all.inj.cor, all.hea.cor)
+
+cs <- c(rep("Injured",7),rep("Healthy",7))
+rs <- c(rep("Artery",dim(artery.hfd.cor)[2]),rep("Liver_1",dim(liver.lin.nash.cor)[2]),rep("Liver_2",dim(liver.dobie.inj.cor)[2]),rep("Lung",dim(lung.d21.cor)[2]),rep("Heart",dim(heart.gfp.mi.cor)[2]))
+rs <- factor(rs, levels=c("Artery","Lung", "Liver_1", "Liver_2","Heart"))
+cols <- c("#5ae3a6", "#5a97e3", "#e35a97", "#e3a65a", "#625ae3")
+names(cols) <- unique(rs)
+ra <- rowAnnotation(Tissue=rs, col=list(Tissue=cols))
+ca <- HeatmapAnnotation(Type=cs, col=list(Type=c("Injured"="#676767","Healthy"="#a6a6a6")))
+Heatmap(all.cor, cluster_rows = FALSE, cluster_columns = FALSE, row_split = rs, row_gap = unit(rep(1.5,5), "mm"), name="Rank\nCorrelation", column_split = cs, column_gap = unit(3, "mm"),left_annotation = ra, column_names_rot = 45, top_annotation = ca)
+dev.off()
+```
+
+
+```{r}
+all.cen <- cbind(mou.cen[markers,], kidney.cen[markers,], artery.wirka.cen[markers,], liver.lin.chow.cen[markers,], liver.lin.nash.cen[markers,],liver.dobie.cen[markers,],liver.dobie.inj.cen[markers,],lung.d0.cen[markers,],lung.d21.cen[markers,],heart.tip.cen[markers,],heart.gfp.cen[markers,])
+
+all.cen <- cbind(mou.cen[markers,], kidney.cen[markers,], artery.wirka.cen[markers,], liver.lin.nash.cen[markers,],liver.dobie.inj.cen[markers,],lung.d21.cen[markers,],heart.gfp.cen[markers,])
+```
+
+```{r}
+all.cen.cor <- cor(all.cen, method = "spearman")
+```
+
+```{r}
+d <- dist(all.cen.cor)
+```
+
+
+```{r}
+all.hc <- hclust(d, method = "complete")
+```
+
+```{r fig.height=12, fig.width=12}
+all.hc <- hclust(d, method = "complete") #ward.D
+plot(as.dendrogram(all.hc), horiz = TRUE, xlim = c(4,-1))
+```
+
+
+```{r}
+Heatmap(all.cen.cor)
+```
+

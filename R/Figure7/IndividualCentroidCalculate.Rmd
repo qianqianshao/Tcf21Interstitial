@@ -1,0 +1,404 @@
+Mouse centroids
+```{r}
+mou.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/MouseAdultST25_7SomaticCellTypes_Centroids_Qianyi.txt",header = TRUE, row.names = 1)
+colnames(mou.cen) <- c("InnateLymphoid","Macrophage","Endothelial", "Myoid", "Leydig","Sertoli","Tcf21+")
+
+mou.markers <- read.table("~/storage/Others/Tcf21/MouseSomaMarkers.txt", header = TRUE)
+mou.soma.markers <- intersect(unique(mou.markers$gene), rownames(mou.cen))
+```
+
+
+## Mouse lung data
+```{r}
+mou.lung.raw <- read.table("~/storage/Others/Tcf21/MouseLung/GSE104154_d0_d21_sma_tm_Expr_raw.csv.gz", header = TRUE, sep = ",")
+```
+
+```{r}
+mou.lung.genes <- mou.lung.raw$symbol
+genes.dup <- names(which(table(mou.lung.genes)>=2))
+mou.lung <- mou.lung.raw[!mou.lung.genes %in% genes.dup,c(3:dim(mou.lung.raw)[2])]
+rownames(mou.lung) <- mou.lung.genes[!mou.lung.genes %in% genes.dup]
+```
+
+```{r}
+mou.lung.d0.lab <- read.table("~/storage/Others/Tcf21/MouseLung/GSE104154_cell_type_annotation_d0.txt", header = TRUE, row.names = 1)
+mou.lung.d21.lab <- read.table("~/storage/Others/Tcf21/MouseLung/GSE104154_cell_type_annotation_d21.txt", header = TRUE, row.names = 1)
+```
+
+```{r}
+mou.lung.d0.norm <- apply(mou.lung[,rownames(mou.lung.d0.lab)],2,function(x) x/sum(x)*1e4)
+mou.lung.d21.norm <- apply(mou.lung[,rownames(mou.lung.d21.lab)],2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+mou.lung.d0.cen <- c()
+for(i in unique(mou.lung.d0.lab$defined)){
+  cells <- rownames(mou.lung.d0.lab)[mou.lung.d0.lab$defined == i]
+  cen <- apply(mou.lung.d0.norm[,cells],1,mean)
+  mou.lung.d0.cen <- cbind(mou.lung.d0.cen, cen)
+}
+mou.lung.d0.cen <- log(mou.lung.d0.cen + 1)
+colnames(mou.lung.d0.cen) <- unique(mou.lung.d0.lab$defined)
+
+mou.lung.d21.cen <- c()
+for(i in unique(mou.lung.d21.lab$defined)){
+  cells <- rownames(mou.lung.d21.lab)[mou.lung.d21.lab$defined == i]
+  cen <- apply(mou.lung.d21.norm[,cells],1,mean)
+  mou.lung.d21.cen <- cbind(mou.lung.d21.cen, cen)
+}
+mou.lung.d21.cen <- log(mou.lung.d21.cen + 1)
+colnames(mou.lung.d21.cen) <- unique(mou.lung.d21.lab$defined)
+```
+
+```{r}
+genes.int <- intersect(rownames(mou.lung), rownames(mou.cen))
+marker.int <- intersect(rownames(mou.lung), mou.soma.markers)
+```
+
+```{r}
+mou.germ.d0.cor <- cor(mou.cen[genes.int,], mou.lung.d0.cen[genes.int,], method = "spearman")
+mou.germ.d21.cor <- cor(mou.cen[genes.int,], mou.lung.d21.cen[genes.int,], method = "spearman")
+mou.germ.d0.marker.cor <- cor(mou.cen[marker.int,], mou.lung.d0.cen[marker.int,], method = "spearman")
+mou.germ.d21.marker.cor <- cor(mou.cen[marker.int,], mou.lung.d21.cen[marker.int,], method = "spearman")
+```
+
+```{r}
+library(ComplexHeatmap)
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/SomativsD0.pdf", width = 5, height = 4.5)
+lung.d0.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors")
+Heatmap(mou.germ.d0.cor[,lung.d0.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. D0")
+dev.off()
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/SomativsD21.pdf", width = 5, height = 4.5)
+lung.d21.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors","PDGFrb")
+Heatmap(mou.germ.d21.cor[,lung.d21.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. D21")
+dev.off()
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/SomativsD0_marker.pdf", width = 5, height = 4.5)
+lung.d0.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors")
+Heatmap(mou.germ.d0.marker.cor[,lung.d0.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. D0")
+dev.off()
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/SomativsD21_marker.pdf", width = 5, height = 4.5)
+lung.d21.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors","PDGFrb")
+Heatmap(mou.germ.d21.marker.cor[,lung.d21.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. D21")
+dev.off()
+```
+```{r}
+saveRDS(mou.lung.d0.cen,file = "~/storage/Others/Tcf21/mou.lung.d0.cen.rds")
+saveRDS(mou.lung.d21.cen, file = "~/storage/Others/Tcf21/mou.lung.d21.cen.rds")
+```
+
+
+## In vitro differentiated Leydig cell
+```{r}
+vitroledig <- read.table("~/storage/Others/Tcf21/OldSca1LM_7clusters_AllGeneCentroids_Markers_QM_12.9.2019.txt", header = TRUE, row.names = 1, skip = 11, sep = "\t")
+colnames(vitroledig) <- c("IntProgLy6a","IntProgTcf21","ProlifIntProg","KidneyCell","DiffIntProg","ImmLeydig","Leydig")
+```
+
+```{r}
+genes.int <- intersect(rownames(mou.lung), rownames(vitroledig))
+mou.germ.leydig.d0.cor <- cor(vitroledig[genes.int,], mou.lung.d0.cen[genes.int,], method = "spearman")
+mou.germ.leydig.d21.cor <- cor(vitroledig[genes.int,], mou.lung.d21.cen[genes.int,], method = "spearman")
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/invitrovsD0.pdf", width = 5, height = 4.5)
+lung.d0.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors")
+Heatmap(mou.germ.leydig.d0.cor[,lung.d0.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "In vitro differentiated Leydig vs. D0")
+dev.off()
+```
+
+```{r fig.width=5, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/invitrovsD21.pdf", width = 5, height = 4.5)
+lung.d21.clusters <- c("Col14a1","Col13a1","Myofibroblasts", "Methothelial","Endothelial","Lipofibroblasts","Mesprogenitors","PDGFrb")
+Heatmap(mou.germ.leydig.d21.cor[,lung.d21.clusters], cluster_rows = FALSE, cluster_columns = FALSE, column_title = "In vitro differentiated Leydig vs. D21")
+dev.off()
+```
+
+## Heart_Farbehi
+```{r}
+tip.raw <- read.table("~/storage/Others/Tcf21/Heart_Farbehi/TIP_ShamVsMI_days3_7.txt", header = TRUE, row.names = 1, sep = "\t")
+tip.tsne <- read.table("~/storage/Others/Tcf21/Heart_Farbehi/TIP_tSNE_cluster_ID_table.txt", header = TRUE, row.names = 1, sep = "\t")
+
+tip.cell.types <- unique(tip.tsne$cluster)
+
+tip.normalized <- apply(tip.raw,2,function(x) x/sum(x)*1e4)
+
+tip.sham.cen <- c()
+for(i in tip.cell.types){
+  cen <- apply(tip.normalized[,rownames(tip.tsne)[tip.tsne$cluster==i & tip.tsne$experiment=="Sham"]],1,mean)
+  tip.sham.cen <- cbind(tip.sham.cen, cen)
+}
+colnames(tip.sham.cen) <- tip.cell.types
+
+tip.mi.cen <- c()
+for(i in tip.cell.types){
+  cen <- apply(tip.normalized[,rownames(tip.tsne)[tip.tsne$cluster==i & tip.tsne$experiment!="Sham"]],1,mean)
+  tip.mi.cen <- cbind(tip.mi.cen, cen)
+}
+colnames(tip.mi.cen) <- tip.cell.types
+
+genes.int <- intersect(rownames(tip.normalized), rownames(mou.cen))
+markers.int <- intersect(rownames(tip.normalized), mou.soma.markers)
+
+mou.germ.tip.cor <- cor(mou.cen[genes.int,], tip.cen[genes.int,], method = "spearman")
+mou.germ.tip.marker.cor <- cor(mou.cen[markers.int,], tip.cen[markers.int,], method = "spearman")
+#saveRDS(mou.germ.tip.cor, file = "~/storage/Others/Tcf21/mou.germ.tip.cor.rds")
+```
+
+```{r fig.width=10, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_TIP.pdf", width = 10, height = 4.5)
+Heatmap(mou.germ.tip.cor, cluster_rows = TRUE, cluster_columns = TRUE, column_title = "mouse tesits somatic vs. Liver_TIP", show_row_dend = FALSE, show_column_dend = FALSE)
+dev.off()
+```
+
+```{r fig.width=10, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_TIP_marker.pdf", width = 10, height = 4.5)
+Heatmap(mou.germ.tip.marker.cor, cluster_rows = TRUE, cluster_columns = TRUE, column_title = "mouse tesits somatic vs. Liver_TIP", show_row_dend = FALSE, show_column_dend = FALSE)
+dev.off()
+```
+
+```{r}
+#gfp.raw <- read.table("~/storage/Others/Tcf21/Heart_Farbehi/GFP_ShamVsMI_days3_7.txt", header = TRUE, row.names = 1, sep = "\t")
+#saveRDS(gfp.raw, file = "~/storage/Others/Tcf21/Heart_Farbehi/gfp.raw.rds")
+gfp.raw <- readRDS("~/storage/Others/Tcf21/Heart_Farbehi/gfp.raw.rds")
+gfp.tsne <- read.table("~/storage/Others/Tcf21/Heart_Farbehi/GFP_tSNE_cluster_ID_table.txt", header = TRUE, row.names = 1, sep = "\t")
+
+gfp.cell.types <- unique(gfp.tsne$cluster)
+
+gfp.normalized <- apply(gfp.raw,2,function(x) x/sum(x)*1e4)
+
+gfp.sham.cen <- c()
+for(i in gfp.cell.types){
+  cells <- gfp.tsne$cluster==i & grepl("Sham", gfp.tsne$experiment)==TRUE
+  if(sum(cells)>=30){
+    cen <- apply(gfp.normalized[,rownames(gfp.tsne)[cells]],1,mean)
+  }else{
+    cen <- rep(NA,dim(gfp.normalized)[1])
+  }
+  gfp.sham.cen <- cbind(gfp.sham.cen, cen)
+}
+colnames(gfp.sham.cen) <- gfp.cell.types
+
+gfp.mi.cen <- c()
+for(i in gfp.cell.types){
+  cells <- gfp.tsne$cluster==i & grepl("Sham", gfp.tsne$experiment)==FALSE
+  if(sum(cells)>=30){
+    cen <- apply(gfp.normalized[,rownames(gfp.tsne)[cells]],1,mean)
+  }else{
+    cen <- rep(NA,dim(gfp.normalized)[1])
+  }
+  gfp.mi.cen <- cbind(gfp.mi.cen, cen)
+}
+colnames(gfp.mi.cen) <- gfp.cell.types
+
+genes.int <- intersect(rownames(gfp.normalized), rownames(mou.cen))
+markers.int <- intersect(rownames(gfp.normalized), mou.soma.markers)
+
+mou.germ.gfp.cor <- cor(mou.cen[genes.int,], gfp.cen[genes.int,], method = "spearman")
+mou.germ.gfp.marker.cor <- cor(mou.cen[markers.int,], gfp.cen[markers.int,], method = "spearman")
+#saveRDS(mou.germ.gfp.cor, file = "~/storage/Others/Tcf21/mou.germ.gfp.cor.rds")
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_GFP.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.gfp.cor, cluster_rows = TRUE, cluster_columns = TRUE, column_title = "mouse tesits somatic vs. Liver_GFP", show_row_dend = FALSE, show_column_dend = FALSE)
+dev.off()
+```
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_GFP_marker.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.gfp.marker.cor, cluster_rows = TRUE, cluster_columns = TRUE, column_title = "mouse tesits somatic vs. Liver_GFP", show_row_dend = FALSE, show_column_dend = FALSE)
+dev.off()
+```
+
+```{r}
+save.image(file = "~/storage/Others/Tcf21/Heart_Farbehi/bak20200405.RData")
+```
+
+```{r}
+load("~/storage/Others/Tcf21/Heart_Farbehi/bak20200405.RData")
+```
+
+```{r}
+saveRDS(gfp.sham.cen, file = "~/storage/Others/Tcf21/gfp.cen.sham.rds")
+saveRDS(gfp.mi.cen, file = "~/storage/Others/Tcf21/gfp.cen.mi.rds")
+saveRDS(tip.sham.cen, file = "~/storage/Others/Tcf21/tip.cen.sham.rds")
+saveRDS(tip.mi.cen, file = "~/storage/Others/Tcf21/tip.cen.mi.rds")
+```
+
+
+## Liver_Jiandie Lin
+
+```{r}
+load("~/storage/Others/Tcf21/Liver_Xiong/embedding_res0.07_clean.Rda")
+load("~/storage/Others/Tcf21/Liver_Xiong/metadata_res0.07_clean.Rda")
+liver.lin.tsne <- tsne
+liver.lin.meta <- meta_data
+```
+
+```{r}
+chow1 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714747_chow1_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(chow1) <- paste0("chow1_",colnames(chow1))
+chow2 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714748_chow2_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(chow2) <- paste0("chow2_",colnames(chow2))
+chow3 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714749_chow3_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(chow3) <- paste0("chow3_",colnames(chow3))
+nash1 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714750_nash1_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(nash1) <- paste0("nash1_",colnames(nash1))
+nash2 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714751_nash2_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(nash2) <- paste0("nash2_",colnames(nash2))
+nash3 <- read.table("~/storage/Others/Tcf21/Liver_Xiong/GSM3714752_nash3_filtered_gene_bc_matrices.csv.gz",header = TRUE,row.names = 1, sep = ",")
+colnames(nash3) <- paste0("nash3_",colnames(nash3))
+```
+
+```{r}
+#liver.lin.raw <- cbind(chow1, chow2, chow3, nash1, nash2, nash3)
+#saveRDS(liver.lin.raw, "~/storage/Others/Tcf21/Liver_Xiong/liver.lin.raw.rds")
+liver.lin.raw <- readRDS("~/storage/Others/Tcf21/Liver_Xiong/liver.lin.raw.rds")
+liver.lin.normalized <- apply(liver.lin.raw,2,function(x) x/sum(x)*1e4)
+
+lin.cell.types <- c("Endo", "Macrophage","Tcell","Bcell","Dendritic","Cholangiocyte","Hematocyte","DividingCells","PlasmaBCell","HSC")
+liver.lin.meta$celltypes <- plyr::mapvalues(liver.lin.meta$res.0.07, from = c(0:9), lin.cell.types)
+liver.lin.meta$type <- substr(liver.lin.meta$orig.ident,1,4)
+
+lin.chow.cen <- c()
+for(i in c(0:9)){
+  cen <- apply(liver.lin.normalized[,rownames(liver.lin.meta)[liver.lin.meta$res.0.07==i & liver.lin.meta$orig.ident %in% c("chow1","chow2","chow3")]],1,mean)
+  lin.chow.cen <- cbind(lin.chow.cen, cen)
+}
+colnames(lin.chow.cen) <- lin.cell.types
+
+lin.nash.cen <- c()
+for(i in c(0:9)){
+  cen <- apply(liver.lin.normalized[,rownames(liver.lin.meta)[liver.lin.meta$res.0.07==i & liver.lin.meta$orig.ident %in% c("nash1","nash2","nash3")]],1,mean)
+  lin.nash.cen <- cbind(lin.nash.cen, cen)
+}
+colnames(lin.nash.cen) <- lin.cell.types
+
+genes.int <- intersect(rownames(liver.lin.normalized), rownames(mou.cen))
+marker.int <- intersect(rownames(liver.lin.normalized), mou.soma.markers)
+
+#mou.germ.lin.cor <- cor(mou.cen[genes.int,], lin.cen[genes.int,], method = "spearman")
+mou.germ.lin.chow.cor <- cor(mou.cen[genes.int,], lin.chow.cen[genes.int,], method = "spearman")
+mou.germ.lin.nash.cor <- cor(mou.cen[genes.int,], lin.nash.cen[genes.int,], method = "spearman")
+
+mou.germ.lin.chow.marker.cor <- cor(mou.cen[marker.int,], lin.chow.cen[marker.int,], method = "spearman")
+mou.germ.lin.nash.marker.cor <- cor(mou.cen[marker.int,], lin.nash.cen[marker.int,], method = "spearman")
+#saveRDS(mou.germ.lin.cor, file = "~/storage/Others/Tcf21/mou.germ.lin.cor.rds")
+```
+
+```{r}
+a <- data.frame(table(liver.lin.meta$type, liver.lin.meta$celltypes))
+a.frac <- t(apply(a,1,function(x) x/sum(x)))
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_Lin_chow.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.lin.chow.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Liver_Lin")
+dev.off()
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_Lin_nash.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.lin.nash.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Liver_Lin")
+dev.off()
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_Lin_chow_marker.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.lin.chow.marker.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Liver_Lin")
+dev.off()
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_Lin_nash_marker.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.lin.nash.marker.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Liver_Lin")
+dev.off()
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Liver_Lin.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.lin.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Liver_Lin")
+dev.off()
+```
+
+```{r}
+save.image(file = "~/storage/Others/Tcf21/Liver_Xiong/bak20200405.RData")
+```
+
+```{r}
+load(file = "~/storage/Others/Tcf21/Liver_Xiong/bak20200405.RData")
+```
+```{r}
+saveRDS(lin.chow.cen, file = "~/storage/Others/Tcf21/lin.chow.cen.rds")
+saveRDS(lin.nash.cen, file = "~/storage/Others/Tcf21/lin.nash.cen.rds")
+```
+
+
+## Kidney_Park
+```{r}
+kidney.raw <- read.table("~/storage/Others/Tcf21/Kidney_Park/GSE107585_Mouse_kidney_single_cell_datamatrix.txt.gz", header = TRUE, row.names = 1, sep = "\t")
+saveRDS(kidney.raw, file = "~/storage/Others/Tcf21/Kidney_Park/kidney.raw.rds")
+kidney.raw <- readRDS("~/storage/Others/Tcf21/Kidney_Park/kidney.raw.rds")
+```
+
+```{r}
+kidney.labels <- kidney.raw[1,]
+kidney.raw <- kidney.raw[rownames(kidney.raw)!="Cluster_Number",]
+kidney.normalized <- apply(kidney.raw,2,function(x) x/sum(x)*1e4)
+kidney.labels <- unlist(kidney.labels)
+kidney.cell.types <- c("Endo","Podo","PT","LOH","DCT","CD-PC","CD-IC","CD-Trans","Novel1","Fib","Macro","Neutro","Blymph","Tlymph","NK","Novel2")
+
+kidney.cen <- c()
+for(i in c(1:16)){
+  cen <- apply(kidney.normalized[,names(kidney.labels)[kidney.labels==i]],1,mean)
+  kidney.cen <- cbind(kidney.cen, cen)
+}
+colnames(kidney.cen) <- kidney.cell.types
+```
+
+```{r}
+genes.int <- intersect(rownames(kidney.normalized), rownames(mou.cen))
+markers.int <- intersect(rownames(kidney.normalized), mou.soma.markers)
+```
+
+```{r}
+mou.germ.kidney.cor <- cor(mou.cen[genes.int,], kidney.cen[genes.int,], method = "spearman")
+mou.germ.kidney.marker.cor <- cor(mou.cen[markers.int,], kidney.cen[markers.int,], method = "spearman")
+#saveRDS(mou.germ.kidney.cor, file = "~/storage/Others/Tcf21/mou.germ.kidney.cor.rds")
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Kidney.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.kidney.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Kidney")
+dev.off()
+```
+
+```{r fig.width=6, fig.height=4.5}
+pdf("~/storage/Others/Tcf21/Kidney_marker.pdf", width = 6, height = 4.5)
+Heatmap(mou.germ.kidney.marker.cor, cluster_rows = FALSE, cluster_columns = FALSE, column_title = "mouse tesits somatic vs. Kidney")
+dev.off()
+```
+
+```{r}
+save.image(file = "~/storage/Others/Tcf21/Kidney_Park/bak20200405.RData")
+```
+
+```{r}
+load(file = "~/storage/Others/Tcf21/Kidney_Park/bak20200405.RData")
+```
+
+```{r}
+saveRDS(kidney.cen, file = "~/storage/Others/Tcf21/kidney.cen.rds")
+```
+
