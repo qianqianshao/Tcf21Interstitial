@@ -1,0 +1,113 @@
+
+```{r}
+mou.int.soma.mat <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200217_Soma_Soma/ehvg.soma.mou.int.soma.mat.rds")
+```
+
+
+
+```{r}
+get5per <- function(int.cells.mat){
+  all.scores <- as.vector(int.cells.mat)
+  quant.95 <- quantile(all.scores, probs = 0.95)
+  int.cells.mat.trc <- int.cells.mat
+  int.cells.mat.trc[int.cells.mat<quant.95] = 0
+
+  int.mean <- apply(int.cells.mat.trc,1,mean)
+  int.cells.mat.trc <- int.cells.mat.trc[int.mean!=0,]
+  return(int.cells.mat.trc)
+}
+```
+
+```{r}
+mou.int.soma.mat.trc <- get5per(mou.int.soma.mat)
+```
+
+```{r}
+mou.soma <- apply(mou.int.soma.mat.trc,2,function(x) sum(x>0))
+```
+
+```{r}
+mou.soma.df <- data.frame(Interactions = mou.soma,Ligand=unlist(lapply(names(mou.soma),function(x) str_split(x,"-")[[1]][1])), Receptor=unlist(lapply(names(mou.soma),function(x) str_split(x,"-")[[1]][2])))
+#mou.df$Ligand <- factor(mou.df$Ligand, levels = c("InnateLymphoid","Macrophage","Endothelial","Myoid","Sertoli","Leydig","InterProgenitor"))
+
+mou.soma.lig.total = mou.soma.df %>% group_by(Ligand) %>% summarise(sum=sum(Interactions))
+mou.soma.rec.total = mou.soma.df %>% group_by(Receptor) %>% summarise(sum=sum(Interactions))
+```
+
+
+```{r}
+library(dplyr)
+library(plotrix)
+library(shape)
+```
+
+CURVE!!
+```{r fig.width=6, fig.height=6}
+int.circ.plot <- function(lig.rec, rad1, rad2, lig.lab, rec.lab, lig.col, rec.col,lig.label, rec.label, lig.total, rec.total){
+
+lig.len = length(lig.lab)
+rec.len = length(rec.lab)
+plot(1, type="n", xlab="", ylab="", xlim=c(-4, 15), ylim=c(0, max(lig.len,rec.len)+2),axes = FALSE) ##axes2 = FALSE
+
+for(i in c(1:lig.len)){
+  if(lig.len >= rec.len){
+    h = i
+  }else{
+    h = 2.5*i + ceiling((rec.len-2.5*lig.len)/2)
+  }
+  x_add <- sqrt(rad1^2-(3-(h-1))^2) - sqrt(rad1^2-3^2)
+  draw.circle(3.5-x_add,h,rev(lig.total$sum)[i]/max(lig.total$sum)*0.5,border = rev(lig.col)[i],col = rev(lig.col)[i])
+  text(2.8-x_add,h,labels = rev(lig.lab)[i],cex=1.2, adj=c(1,0.5))
+}
+
+for(i in c(1:rec.len)){
+  if(lig.len <= rec.len){
+    h = i
+  }else{
+    h = 2.5*i + ceiling((lig.len-2*rec.len)/2)
+  }
+  x_add <- sqrt(rad2^2-(3-(h-1))^2) - sqrt(rad2^2-3^2)
+  draw.circle(10.2+x_add,h,rev(rec.total$sum)[i]/max(rec.total$sum)*0.5,border = rev(rec.col)[i],col = rev(rec.col)[i])
+  text(10.8+x_add,h,label = rev(rec.lab)[i],cex=1.2, adj=c(0,0.5))
+}
+
+shrink = 0.95
+for(i in c(1:dim(lig.rec)[1])){
+  if(lig.rec$Interactions[i]==0){
+    next
+  }
+  if(lig.len >= rec.len){
+    h1 = lig.len + 1
+    h2 = lig.len + 1
+  }else{
+    h1 = 2.5*lig.len + 2.5 + ceiling((rec.len - 2.5*lig.len)/2)
+    h2 = rec.len + 1
+  }
+  left_heady <- h1-as.numeric(lig.rec$Ligand[i])
+  left_x_add <- sqrt(rad1^2-(3-(left_heady-1))^2) - sqrt(rad1^2-3^2)
+  headx = 3.3+shrink*(7-0.6)
+  heady = h2-as.numeric(lig.rec$Receptor[i]) - (1-shrink)*((h2-as.numeric(lig.rec$Receptor[i])) - (h1-as.numeric(lig.rec$Ligand[i])))
+  right_x_add <- sqrt(rad2^2-(3-(heady-1))^2) - sqrt(rad2^2-3^2)
+  Arrows(3.8-left_x_add,left_heady,headx+right_x_add,heady,lwd = lig.rec$Interactions[i]/max(lig.rec$Interactions)*6, arr.width = 0.05, col = alpha("black", alpha = 0.6*lig.rec$Interactions[i]/max(lig.rec$Interactions)))
+}
+}
+```
+
+
+```{r fig.height=8, fig.width=7}
+soma.lab <- as.character(unique(mou.soma.df$Ligand))
+soma.col <- c("#006c44","#ffff33", "#984ea3", "#377eb8","#f781bf","#696969","#f0027f")
+pdf(file = "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200217_Soma_Soma//Global.Mouse.soma.inter.pdf", height = 8, width = 7)
+mou.soma.df$Ligand <- factor(mou.soma.df$Ligand, levels=soma.lab)
+mou.soma.df$Receptor <- factor(mou.soma.df$Receptor, levels=soma.lab)
+
+mou.soma.lig.total <- data.frame(mou.soma.lig.total)
+rownames(mou.soma.lig.total) <- mou.soma.lig.total$Ligand
+mou.soma.lig.total <- mou.soma.lig.total[soma.lab,]
+
+mou.soma.rec.total <- data.frame(mou.soma.rec.total)
+rownames(mou.soma.rec.total) <- mou.soma.rec.total$Receptor
+mou.soma.rec.total <- mou.soma.rec.total[soma.lab,]
+int.circ.plot(mou.soma.df, 5, 5, soma.lab,soma.lab, soma.col, soma.col,"Soma","Soma",mou.soma.lig.total, mou.soma.rec.total)
+dev.off()
+```
