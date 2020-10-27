@@ -1,0 +1,165 @@
+
+#Ligand-receptor analysis for Somatic cells in Mouse (using ligand/receptor interaction data from Ramilowski_2015)
+
+567 Receptors
+586 Ligands
+2015 Interactions
+
+##1. Select highly variable genes from somatic and germline clusters clusters using Jun's code
+```{r}
+soma.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/MouseAdultST25_7SomaticCellTypes_Centroids_Qianyi.txt",header = T,sep="\t",row.names = 1))
+colnames(soma.mean) <- c("InnateLymphoid", "Macrophage", "Endothelial", "Myoid", "Leydig","Sertoli","Tcf21+")
+spg.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt",header = T,sep="\t",row.names = 1))
+```
+
+
+## function used for plotting dots with density as heat
+```{r}
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+library(viridis)
+library(ggExtra)
+library(gridExtra)
+```
+
+###. Select highly variable genes across stages.
+```{r}
+s.mean <- apply(soma.mean,1,mean)
+s.var <- apply(soma.mean,1,var)
+
+s.var <- s.var[s.mean!=0]
+s.mean <- s.mean[s.mean!=0]
+```
+
+```{r}
+filter.s <- names(s.mean)[s.mean > 0.15 & s.var/s.mean > 0.15]
+length(filter.s)
+soma.gen <- data.frame(mean = s.mean, varmean = s.var/s.mean)
+soma.gen$den <- get_density(soma.gen$mean, soma.gen$varmean, n=100)
+
+p <- ggplot(soma.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Soma HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.15) + geom_vline(xintercept = 0.15)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
+
+```
+
+```{r}
+somaGenes <- filter.s
+```
+
+##2. Read in Ligand and Receptor data
+```{r}
+lrinter.hum <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/Ramilowski_LigRec_Human.txt",header = TRUE)
+```
+###. Human-Mouse
+```{r}
+library(biomaRt) #Ensemble Gene 94
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+
+#Remove non-homologs
+humMouOrth <- humMou[humMou$mmusculus_homolog_ensembl_gene!='',]
+dim(humMouOrth)  ##26312
+```
+
+
+```{r}
+lrinter <- c()
+for(i in c(1:dim(lrinter.hum)[1])){
+  lh <- as.character(lrinter.hum[i,1])
+  rh <- as.character(lrinter.hum[i,2])
+  if(!lh %in% humMouOrth$external_gene_name){
+    next
+  }
+  if(!rh %in% humMouOrth$external_gene_name){
+    next
+  }  
+  lms <- humMouOrth[humMouOrth$external_gene_name==lh,]$mmusculus_homolog_associated_gene_name
+  rms <- humMouOrth[humMouOrth$external_gene_name==rh,]$mmusculus_homolog_associated_gene_name
+  for(i in lms){
+    for(j in rms){
+      lrinter <- rbind(lrinter, c(i,j))
+    }
+  }
+}
+```
+
+```{r}
+ligands <- unique(lrinter[,1])
+receptors <- unique(lrinter[,2])
+```
+##3. Extract Ligands and Receptors from Germline and Sertoli cells
+```{r}
+soma.ligands <- intersect(somaGenes,ligands)
+soma.receptors <- intersect(somaGenes,receptors)
+length(soma.ligands) #Number of ligands in somatic cells
+## [1] 142
+length(soma.receptors) #Number of receptors in somatic cells
+## [1] 166
+```
+
+
+##4. Find ligand receptor pairs from highly variable genes
+```{r}
+ligrec <- function(ligands,receptors){
+  lig.rec.pairs <- c()
+  for(i in c(1:dim(lrinter)[1])){
+    if(lrinter[i,1] %in% ligands | lrinter[i,2] %in% receptors){
+      if(lrinter[i,1] %in% rownames(soma.mean) & lrinter[i,2] %in% rownames(soma.mean)){
+        lig.rec.pairs <- rbind(lig.rec.pairs, c(as.character(lrinter[i,1]), as.character(lrinter[i,2])))
+      }
+  }
+  }
+  return(lig.rec.pairs)
+}
+lig.rec.soma.soma <- ligrec(soma.ligands,soma.receptors)
+dim(lig.rec.soma.soma)[1] # Number of pairs for Ligand(Soma)-Receptor(Germ)
+# 1011
+```
+
+```{r}
+soma.lab <- colnames(soma.mean)
+```
+
+```{r}
+soma.combs <- c()
+for(i in soma.lab){
+  for(j in soma.lab){
+    comb <- paste(i, j, sep = "-")
+    soma.combs <- c(soma.combs, comb)
+  }
+}
+int.soma.mat <- matrix(0, nrow = dim(lig.rec.soma.soma)[1], ncol = length(soma.combs))
+rownames(int.soma.mat) <- apply(lig.rec.soma.soma,1,function(x) paste(x[1],x[2],sep = "-"))
+colnames(int.soma.mat) <- soma.combs
+
+for(i in soma.lab){
+  cat(i)
+  for(j in soma.lab){
+    for(k in c(1:dim(lig.rec.soma.soma)[1])){
+        lig <- as.character(lig.rec.soma.soma[k,1])
+        rec <- as.character(lig.rec.soma.soma[k,2])
+        int.pairs <- paste(lig,rec,sep = "-")
+        cel.pairs <- paste(i,j,sep = "-")
+        int.scores <- soma.mean[lig,i] * soma.mean[rec,j]
+        int.soma.mat[int.pairs,cel.pairs] <- int.scores
+    }
+  }
+}
+
+```
+
+```{r}
+saveRDS(int.soma.mat, file = "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200217_Soma_Soma/ehvg.soma.mou.int.soma.mat.rds")
+```
+

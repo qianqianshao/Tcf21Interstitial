@@ -1,0 +1,302 @@
+
+#Ligand-receptor analysis for SPG cells and Somatic cells in Mouse (using ligand/receptor interaction data from Ramilowski_2015)
+
+567 Receptors
+586 Ligands
+2015 Interactions
+
+##1. Select highly variable genes from somatic and germline clusters clusters using Jun's code
+```{r}
+soma.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/MouseAdultST25_7SomaticCellTypes_Centroids_Qianyi.txt",header = T,sep="\t",row.names = 1))
+spg.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt",header = T,sep="\t",row.names = 1))
+germ.20.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.20.warpped.centroids.text", skip = 1, row.names = 1, sep = "\t"))
+germ.mean <- cbind(spg.mean, germ.20.mean)
+germ.mean <- log(germ.mean+1)
+##data source: https://umich.app.box.com/folder/31463886658
+##First 1-Mar and 2-Mar are removed because of duplicates.
+```
+
+
+## function used for plotting dots with density as heat
+```{r}
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+library(viridis)
+library(ggExtra)
+library(gridExtra)
+```
+
+###. Select highly variable genes across stages.
+```{r}
+g.mean<-apply(germ.mean,1,mean)
+g.var<-apply(germ.mean,1,var)
+
+s.mean <- apply(soma.mean,1,mean)
+s.var <- apply(soma.mean,1,var)
+
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+s.var <- s.var[s.mean!=0]
+s.mean <- s.mean[s.mean!=0]
+```
+
+```{r}
+filter.g <- names(g.mean)[g.mean > 0.08 & g.var/g.mean > 0.08]
+length(filter.g)
+germ.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+germ.gen$den <- get_density(germ.gen$mean, germ.gen$varmean, n=100)
+
+p <- ggplot(germ.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Germ HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.08) + geom_vline(xintercept = 0.08)
+p1 <- ggMarginal(p, type="density")
+grid.arrange(p1, ncol=1)
+
+filter.s <- names(s.mean)[s.mean > 0.15 & s.var/s.mean > 0.15]
+length(filter.s)
+soma.gen <- data.frame(mean = s.mean, varmean = s.var/s.mean)
+soma.gen$den <- get_density(soma.gen$mean, soma.gen$varmean, n=100)
+
+p <- ggplot(soma.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Soma HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.15) + geom_vline(xintercept = 0.15)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
+
+```
+
+```{r}
+somaGenes <- filter.s
+germGenes <- filter.g
+```
+
+##2. Read in Ligand and Receptor data
+```{r}
+lrinter.hum <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/Ramilowski_LigRec_Human.txt",header = TRUE)
+```
+###. Human-Mouse
+```{r}
+library(biomaRt) #Ensemble Gene 94
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+
+#Remove non-homologs
+humMouOrth <- humMou[humMou$mmusculus_homolog_ensembl_gene!='',]
+dim(humMouOrth)  ##26312
+```
+
+
+```{r}
+lrinter <- c()
+for(i in c(1:dim(lrinter.hum)[1])){
+  lh <- as.character(lrinter.hum[i,1])
+  rh <- as.character(lrinter.hum[i,2])
+  if(!lh %in% humMouOrth$external_gene_name){
+    next
+  }
+  if(!rh %in% humMouOrth$external_gene_name){
+    next
+  }  
+  lms <- humMouOrth[humMouOrth$external_gene_name==lh,]$mmusculus_homolog_associated_gene_name
+  rms <- humMouOrth[humMouOrth$external_gene_name==rh,]$mmusculus_homolog_associated_gene_name
+  for(i in lms){
+    for(j in rms){
+      lrinter <- rbind(lrinter, c(i,j))
+    }
+  }
+}
+```
+
+```{r}
+ligands <- unique(lrinter[,1])
+receptors <- unique(lrinter[,2])
+```
+##3. Extract Ligands and Receptors from Germline and Sertoli cells
+```{r}
+germ.ligands <- intersect(germGenes,ligands)
+soma.receptors <- intersect(somaGenes,receptors)
+length(germ.ligands) #Number of ligands in germline cells
+## [1] 71
+length(soma.receptors) #Number of receptors in somatic cells
+## [1] 166
+```
+
+
+##4. Find ligand receptor pairs from highly variable genes
+```{r}
+ligrec <- function(ligands,receptors){
+  lig.rec.pairs <- c()
+  for(i in c(1:dim(lrinter)[1])){
+    if(lrinter[i,1] %in% ligands | lrinter[i,2] %in% receptors){
+      if(lrinter[i,1] %in% rownames(germ.mean) & lrinter[i,2] %in% rownames(soma.mean)){
+        lig.rec.pairs <- rbind(lig.rec.pairs, c(as.character(lrinter[i,1]), as.character(lrinter[i,2])))
+      }
+  }
+  }
+  return(lig.rec.pairs)
+}
+lig.rec.germ.soma <- ligrec(germ.ligands,soma.receptors)
+dim(lig.rec.germ.soma)[1] # Number of pairs for Ligand(Soma)-Receptor(Germ)
+# 1039
+```
+
+```{r}
+write.table(lig.rec.germ.soma, file = "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200220_Germ_Soma/eitherHVG.mou.lig.rec.germ.soma.txt", quote = FALSE, row.names = FALSE, col.names = FALSE, sep = "\t")
+```
+
+
+```{r}
+germ.lab <- c(paste0("SPG",c(1:6)), paste0("GC",c(1:20)))
+colnames(germ.mean) <- germ.lab
+soma.lab <- colnames(soma.mean)
+```
+
+```{r}
+cells.combs <- c()
+for(i in germ.lab){
+  for(j in soma.lab){
+    comb <- paste(i, j, sep = "-")
+    cells.combs <- c(cells.combs, comb)
+  }
+}
+soma.germ.int.cells.mat <- matrix(0, nrow = dim(lig.rec.germ.soma)[1], ncol = length(cells.combs))
+rownames(soma.germ.int.cells.mat) <- apply(lig.rec.germ.soma,1,function(x) paste(x[1],x[2],sep = "-"))
+colnames(soma.germ.int.cells.mat) <- cells.combs
+
+for(i in germ.lab){
+  cat(i)
+  for(j in soma.lab){
+    for(k in c(1:dim(lig.rec.germ.soma)[1])){
+        lig <- as.character(lig.rec.germ.soma[k,1])
+        rec <- as.character(lig.rec.germ.soma[k,2])
+        int.pairs <- paste(lig,rec,sep = "-")
+        cel.pairs <- paste(i,j,sep = "-")
+        int.scores <- germ.mean[lig,i] * soma.mean[rec,j]
+        soma.germ.int.cells.mat[int.pairs,cel.pairs] <- int.scores
+    }
+  }
+}
+
+```
+
+```{r}
+saveRDS(soma.germ.int.cells.mat, file = "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200220_Germ_Soma/ehvg.germ.soma.int.cells.mat.rds")
+```
+
+
+```{r}
+all.scores <- as.vector(soma.germ.int.cells.mat)
+quant.95 <- quantile(all.scores, probs = 0.95)
+soma.germ.int.cells.mat.trc <- soma.germ.int.cells.mat
+soma.germ.int.cells.mat.trc[soma.germ.int.cells.mat<quant.95] = 0
+```
+
+```{r}
+int.mean <- apply(soma.germ.int.cells.mat.trc,1,mean)
+soma.germ.int.cells.mat.trc <- soma.germ.int.cells.mat.trc[int.mean!=0, ]
+```
+
+```{r}
+soma.germ.mou.int <- apply(soma.germ.int.cells.mat.trc,2,function(x) sum(x>0))
+```
+
+```{r}
+#soma.germ.mou.int[grepl("SPG",names(soma.germ.mou.int))]=0
+```
+
+
+```{r}
+soma.germ.mou.df <- data.frame(Interactions = soma.germ.mou.int,Ligand=unlist(lapply(names(soma.germ.mou.int),function(x) str_split(x,"-")[[1]][1])), Receptor=unlist(lapply(names(soma.germ.mou.int),function(x) str_split(x,"-")[[1]][2])))
+levels(soma.germ.mou.df$Receptor)[levels(soma.germ.mou.df$Receptor)=="Unknown"]="Tcf21+Interstitial"
+soma.germ.mou.df$Receptor <- factor(soma.germ.mou.df$Receptor, levels = c("InnateLymphoid","Macrophage","Endothelial","Myoid","Sertoli","Leydig","Tcf21+Interstitial"))
+soma.germ.mou.df$Ligand <- factor(soma.germ.mou.df$Ligand, levels = c(paste0("SPG",c(1:6)), paste0("GC",c(1:20))))
+mou.lig.total = soma.germ.mou.df %>% group_by(Ligand) %>% summarise(sum=sum(Interactions))
+mou.rec.total = soma.germ.mou.df %>% group_by(Receptor) %>% summarise(sum=sum(Interactions))
+```
+
+```{r fig.width=6, fig.height=6}
+int.circ.plot2 <- function(lig.rec, rad1, rad2, lig.lab, rec.lab, lig.col, rec.col,lig.label, rec.label, lig.total, rec.total){
+#pdf(filename,width = 6*lineup[2],height = 6*lineup[1])
+
+lig.len = length(lig.lab)
+rec.len = length(rec.lab)
+plot(1, type="n", xlab="", ylab="", xlim=c(-2, 17), ylim=c(0, max(lig.len,rec.len)+2),axes = FALSE) ##axes2 = FALSE
+
+for(i in c(1:lig.len)){
+  if(lig.len >= rec.len){
+    h = i
+  }else{
+    h = 2.5*i + ceiling((rec.len-2.5*lig.len)/2)
+  }
+  x_add <- sqrt(rad1^2-(12.5-(h-1))^2) - sqrt(rad1^2-12.5^2)
+  draw.circle(3.5-x_add,h,rev(lig.total$sum)[i]/max(lig.total$sum)*0.5,border = rev(lig.col)[i],col = rev(lig.col)[i])
+  text(2.8-x_add,h,labels = rev(lig.lab)[i],cex=1.2, adj=c(1,0.5))
+}
+
+#text(3.5,max(lig.len,rec.len)+2.8,paste0(lig.label,"\n(ligand)"),cex=1.5)
+for(i in c(1:rec.len)){
+  if(lig.len <= rec.len){
+    h = i
+  }else{
+    h = 2.5*i + ceiling((lig.len-2.5*rec.len)/2)
+  }
+  x_add <- sqrt(rad2^2-(12.5-(h-1))^2) - sqrt(rad2^2-12.5^2)
+  draw.circle(10.2+x_add,h,rev(rec.total$sum)[i]/max(rec.total$sum)*0.5,border = rev(rec.col)[i],col = rev(rec.col)[i])
+  text(10.8+x_add,h,label = rev(rec.lab)[i],cex=1.2, adj=c(0,0.5))
+}
+
+#text(10.2,max(lig.len,rec.len)+2.8,paste0(rec.label,"\n(receptor)"),cex = 1.5)
+shrink = 0.95
+for(i in c(1:dim(lig.rec)[1])){
+  if(lig.rec$Interactions[i]==0){
+    next
+  }
+  if(lig.len >= rec.len){
+    h1 = lig.len + 1
+    h2 = 2.5*rec.len + 2.5 + ceiling((lig.len - 2.5*rec.len)/2)
+    #h2 = lig.len + 1 - floor((lig.len - rec.len)/2)
+  }else{
+    #h2 = rec.len + 1
+    h1 = 2.5*lig.len + 2.5 + ceiling((rec.len - 2.5*lig.len)/2)
+    h2 = rec.len + 1
+    #h2 = rec.len + 1
+    #h1 = rec.len + 1
+  }
+  #y_height = h2-as.numeric(lig.rec$Receptor[i])
+  left_heady <- h1-as.numeric(lig.rec$Ligand[i])
+  left_x_add <- sqrt(rad1^2-(12.5-(left_heady-1))^2) - sqrt(rad1^2-12.5^2)
+  headx = 3.3+shrink*(7-0.6)
+  heady = h2-2.5*as.numeric(lig.rec$Receptor[i]) - (1-shrink)*((h2-2.5*as.numeric(lig.rec$Receptor[i])) - (h1-as.numeric(lig.rec$Ligand[i])))
+  right_x_add <- sqrt(rad2^2-(12.5-(heady-1))^2) - sqrt(rad2^2-12.5^2)
+  Arrows(3.8-left_x_add,left_heady,headx+right_x_add,heady,lwd = lig.rec$Interactions[i]/max(lig.rec$Interactions)*6, arr.width = 0.05, col = alpha("black", alpha = 0.6*(lig.rec$Interactions[i]-min(lig.rec$Interactions))/(max(lig.rec$Interactions)-min(lig.rec$Interactions))))
+}
+}
+```
+
+```{r fig.height=8, fig.width=7}
+lig.lab <- as.character(unique(soma.germ.mou.df$Ligand))
+rec.lab <- as.character(unique(soma.germ.mou.df$Receptor))
+soma.col <- c("#006c44","#ffff33", "#984ea3", "#377eb8","#f781bf","#696969","#f0027f")
+germ.col <- c(colorRampPalette(c("#c2d3fb", "#3269f3"))(6),colorRampPalette(c("#c2effb","#086b85"))(20))
+#pdf(file = "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200204_Soma_Germ/Global.Mouse.inter.rotated.pdf", height = 8, width = 7)
+int.circ.plot2(soma.germ.mou.df, 40, 40, lig.lab, rec.lab, germ.col, soma.col,"Germ","Soma",mou.lig.total, mou.rec.total)
+#dev.off()
+```
+
+extract SPG-Tcf21+
+```{r}
+spg.tcf21 <- soma.germ.int.cells.mat.trc[,grepl("SPG.*Unknown",colnames(soma.germ.int.cells.mat.trc))]
+spg.tcf21 <- spg.tcf21[apply(spg.tcf21,1,sum)!=0,]
+colnames(spg.tcf21) <- paste0("SPG",c(1:6),"-Tcf21+")
+```
+
+```{r}
+write.table(spg.tcf21, "~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20200220_Germ_Soma//Mouse.spg.tcf21.txt", row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
+```
+
